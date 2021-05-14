@@ -116,6 +116,17 @@ define([
         }
       },
 
+      // Get renderer of layerObject or drawingInfo of layerDefinition for codedvalues labels.
+      // Used for display codedvalue labels. (can't just update render since it's used by query result layer)
+      _getDrawingInfoForLayerInfo: function(layerInfo, layerObject){
+        var drawingInfo = layerInfo.drawingInfo;
+        var renderJson = layerObject.renderer && layerObject.renderer.toJson(); //Related table has layerObject, but no renderer.
+        if(renderJson && jimuUtils.isUniqueReneredByLayerObject(renderJson, jimuUtils.getUniqueRendererByLayerDefinition(layerInfo))){
+          drawingInfo.renderer = lang.clone(renderJson);
+        }
+        return drawingInfo;
+      },
+
       _getCleanClonedCurrentAttrs: function(currentAttrs){
         var clonedCurrentAttrs = SingleQueryLoader.getCleanCurrentAttrsTemplate();
         var fieldValue = null;
@@ -130,6 +141,9 @@ define([
               }
               clonedCurrentAttrs[fieldName] = fieldValue;
             }else{
+              if(fieldName === 'layerInfo' && currentAttrs.layerObject){
+                fieldValue.drawingInfo = this._getDrawingInfoForLayerInfo(fieldValue, currentAttrs.layerObject);
+              }
               clonedCurrentAttrs[fieldName] = lang.clone(fieldValue);
             }
           }

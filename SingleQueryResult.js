@@ -35,7 +35,6 @@ define([
     'esri/dijit/PopupTemplate',
     'esri/dijit/PopupRenderer',
     'esri/tasks/RelationshipQuery',
-    'esri/renderers/SimpleRenderer',
     'jimu/utils',
     'jimu/symbolUtils',
     'jimu/dijit/Popup',
@@ -52,7 +51,7 @@ define([
   ],
   function(declare, _WidgetBase, BindLabelPropsMixin, _TemplatedMixin, _WidgetsInTemplateMixin, Evented, template, lang,
     on, keys, query, html, array, Deferred, esriLang, QueryTask, FeatureSet, PopupTemplate, PopupRenderer,
-    RelationshipQuery, SimpleRenderer, jimuUtils, jimuSymbolUtils, Popup, Message, PopupMenu, BaseFeatureAction,
+    RelationshipQuery, jimuUtils, jimuSymbolUtils, Popup, Message, PopupMenu, BaseFeatureAction,
     SymbolChooser, LayerInfos, FeatureActionManager, SingleQueryLoader, RelatedRecordsResult) {
 
     return declare([_WidgetBase, BindLabelPropsMixin, _TemplatedMixin, _WidgetsInTemplateMixin, Evented], {
@@ -1079,6 +1078,21 @@ define([
       },
 
       /* ----------------------------operations-------------------------------- */
+      // Honor setting: combine fields from title and content.
+      _getDisplayedFields: function(layerFields, popupInfoObj){
+        var fields = lang.clone(layerFields);
+        if(popupInfoObj && !popupInfoObj.readFromWebMap){
+          var contentFields = [];
+          array.map(popupInfoObj.fieldInfos, function(field){
+            field.visible && contentFields.push(field.fieldName);
+          });
+          var titleFields = popupInfoObj.title.substring(1, popupInfoObj.title.length -1).split('}{');
+          var displayedFields = contentFields.concat(titleFields);
+
+          fields = array.filter(fields, function(field){ return displayedFields.includes(field.name)});
+        }
+        return fields;
+      },
 
       _getFeatureSet: function() {
         var layer = this.currentAttrs.query.resultLayer;
@@ -1090,7 +1104,7 @@ define([
         }
 
         var featureSet = new FeatureSet();
-        featureSet.fields = lang.clone(layer.fields);
+        featureSet.fields = this._getDisplayedFields(layer.fields, popupInfoObj);
         featureSet.features = [].concat(layer.graphics);
         featureSet.geometryType = layer.geometryType;
         featureSet.fieldAliases = {};
@@ -1118,6 +1132,7 @@ define([
 
       _onBtnMenuClicked: function(evt) {
         var position = html.position(evt.target || evt.srcElement);
+
         var featureSet = this._getFeatureSet();
         var currentAttrs = this.getCurrentAttrs();
         var layer = currentAttrs.query.resultLayer;
@@ -1237,10 +1252,14 @@ define([
       },
 
       _updateSymbol: function(symbol) {
-        var renderer = new SimpleRenderer(symbol);
+        //update symbol for layer.
         var resultLayer = this.currentAttrs.query.resultLayer;
-        resultLayer.setRenderer(renderer);
+        array.forEach(resultLayer.graphics, function(f) {
+          f.setSymbol(symbol);
+        });
         resultLayer.redraw();
+
+        //update symbol for result items on panel.
         var symbolNodes = query(".symbol", this.resultsTable);
         array.forEach(symbolNodes, lang.hitch(this, function(oldSymbolNode) {
           var parent = oldSymbolNode.parentElement;

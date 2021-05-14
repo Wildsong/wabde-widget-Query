@@ -929,6 +929,9 @@ define([
 
         currentAttrs.query.resultLayer = resultLayer;
 
+        //Bind drawingInfo to resultLayer since featureLayer with featureCollection ignores it, for codedvalues labels.
+        resultLayer.drawingInfo = layerInfo.drawingInfo;
+
         //set renderer
         //if the layer is a table, resultsSymbol will be null
         if(!queryUtils.isTable(currentAttrs.layerInfo)){
